@@ -1,0 +1,182 @@
+name: Test
+
+on:
+  push:
+    paths:
+      - "**/*.c"
+      - "**/*.h"
+      - "auto/**"
+      - "!*.md"
+      - "!CHANGES*"
+      - "!LICENSE"
+      - "!.hgtags"
+      - "!.clang-format"
+      - "!.gitignore"
+      - "!conf/**"
+  workflow_dispatch:
+
+
+defaults:
+  run:
+    shell: bash
+
+
+jobs:
+  test:
+    env:
+      NGINX_STREAM_LISTEN_PORT: 19000
+      NGINX_HTTP_LISTEN_PORT: 19001
+      PROXY_QUERY_COUNT: 30
+      PROXY_QUERY_ROUNDWAIT: 1
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        docker_image: ["debian:bullseye", "debian:bookworm", "ubuntu:24.04", "ubuntu:22.04"]
+        PROXY_IP: ["127.0.0.1:59999", "[::1]:59999"]
+        REMOTE_DOMAIN: ["icanhazip.com"]
+        include:
+          - REMOTE_PORT: "443"
+            DIG_TYPE: "A"
+          - REMOTE_PORT: "443"
+            DIG_TYPE: "AAAA"
+          - REMOTE_HOST: "icanhazip.com:443"
+            REMOTE_RESOLVE: "remote_resolve"
+          - REMOTE_HOST: "icanhazip.com:443"
+    container:
+      image: ${{ matrix.docker_image }}
+    steps:
+      - name: Setup
+        run: |
+          echo "PROXY_IP=${{ matrix.PROXY_IP }}" >> $GITHUB_ENV
+          echo "REMOTE_DOMAIN=${{ matrix.REMOTE_DOMAIN }}" >> $GITHUB_ENV
+          echo "REMOTE_PORT=${{ matrix.REMOTE_PORT }}" >> $GITHUB_ENV
+          echo "DIG_TYPE=${{ matrix.DIG_TYPE }}" >> $GITHUB_ENV
+          echo "REMOTE_HOST=${{ matrix.REMOTE_HOST }}" >> $GITHUB_ENV
+          echo "REMOTE_RESOLVE=${{ matrix.REMOTE_RESOLVE }}" >> $GITHUB_ENV
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install packages
+        run: |
+          apt-get -y update
+          apt-get -y install curl wget git ca-certificates tar build-essential libc6 libpcre3-dev openssl libssl-dev zlib1g-dev dnsutils
+      - name: Install goproxy
+        run: |
+          wget --no-verbose -O "proxy.tar.gz" "https://github.com/snail007/goproxy/releases/download/v14.8/proxy-linux-amd64.tar.gz"
+          tar -xf proxy.tar.gz
+          chmod +x proxy
+      - name: Compile Nginx
+        run: |
+          cp auto/configure .
+          chmod +x configure
+          ./configure --with-socks5 --with-stream --with-debug --with-http_ssl_module
+          make
+      - name: Setup goproxy
+        run: |
+          if [[ -z "$REMOTE_HOST" ]]; then
+            REMOTE_HOST=$(dig +short $DIG_TYPE $REMOTE_DOMAIN | head -1 | tr -d '\n')
+            if [[ "$DIG_TYPE" == "AAAA" ]]; then
+              REMOTE_HOST="[$REMOTE_HOST]"
+            fi
+            echo REMOTE_HOST="$REMOTE_HOST:$REMOTE_PORT" >> $GITHUB_ENV
+          else
+            echo PROXY_DNS="--dns-address "8.8.8.8:53" --dns-ttl 300" >> $GITHUB_ENV
+          fi
+      - name: Setup hosts
+        run: |
+          cat << EOF >> /etc/hosts
+          127.0.0.1  $REMOTE_DOMAIN
+          EOF
+          echo /etc/hosts
+      - name: Setup Nginx
+        run: |
+          rm -rf logs
+          mkdir -p logs
+          echo | tee logs/access.log
+          echo | tee logs/error.log
+          cat << EOF > conf/nginx.conf
+
+          user  root;
+          worker_processes  1;
+          error_log  logs/error.log  debug;
+
+          events {
+              worker_connections  1024;
+          }
+
+          http {
+              socks5_timeout 3;
+
+              upstream http-test {
+                  server $REMOTE_HOST socks5=$PROXY_IP $REMOTE_RESOLVE;
+              }
+
+              server {
+                  listen  $NGINX_HTTP_LISTEN_PORT;
+                  location / {
+                      proxy_ssl_server_name    on;
+                      proxy_ssl_name           $REMOTE_DOMAIN;
+                      proxy_ssl_protocols      TLSv1.2  TLSv1.3;
+                      proxy_pass               https://http-test;
+                      proxy_http_version       1.1;
+                      proxy_set_header         Host  $REMOTE_DOMAIN;
+                      proxy_ssl_session_reuse  off;
+                  }
+              }
+          }
+
+          stream {
+
+              socks5_timeout 3;
+
+              upstream stream-test {
+                  server $REMOTE_HOST socks5=$PROXY_IP $REMOTE_RESOLVE;
+              }
+
+              server {
+                  listen $NGINX_STREAM_LISTEN_PORT;
+                  proxy_pass stream-test;
+              }
+          }
+
+          EOF
+      - name: Run
+        run: |
+          objs/nginx -V
+          objs/nginx -p $(pwd) -t
+          objs/nginx -p $(pwd) -g "daemon on;"
+          ./proxy --trace socks --always -t tcp -p "$PROXY_IP" $PROXY_DNS --daemon --log proxy.log
+          declare -i max_query_count=$PROXY_QUERY_COUNT
+          declare -i i_count=0
+          while [ $i_count -le $max_query_count ]; do
+            i_count+=1
+            if cat proxy.log | grep socks > /dev/null; then
+              break;
+            elif [[ $i_count -eq $max_query_count ]]; then
+              echo "QUERY FAILURE."
+              exit 1;
+            fi
+            sleep $PROXY_QUERY_ROUNDWAIT
+          done
+      - name: Test stream
+        run: |
+          curl -s -o /dev/null --connect-timeout 5 "https://${REMOTE_DOMAIN}:${NGINX_STREAM_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 > /dev/null
+          curl -s -o /dev/null --connect-timeout 5 "https://${REMOTE_DOMAIN}:${NGINX_STREAM_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 > /dev/null
+          curl -s -o /dev/null --connect-timeout 5 "https://${REMOTE_DOMAIN}:${NGINX_STREAM_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 > /dev/null
+      - name: Test http
+        run: |
+          curl -s -o /dev/null --connect-timeout 5 "http://${REMOTE_DOMAIN}:${NGINX_HTTP_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 > /dev/null
+          curl -s -o /dev/null --connect-timeout 5 "http://${REMOTE_DOMAIN}:${NGINX_HTTP_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 > /dev/null
+          curl -s -o /dev/null --connect-timeout 5 "http://${REMOTE_DOMAIN}:${NGINX_HTTP_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 > /dev/null
+      - name: Upload artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          path: |
+            **/proxy.log
+            logs/*
+            conf/nginx.conf
+          retention-days: 3
+          overwrite: true
+          name: Action-${{ github.run_id }}
