@@ -81,7 +81,7 @@ jobs:
           cat << EOF >> /etc/hosts
           127.0.0.1  $REMOTE_DOMAIN
           EOF
-          echo /etc/hosts
+          cat /etc/hosts
       - name: Setup Nginx
         run: |
           rm -rf logs
@@ -155,14 +155,14 @@ jobs:
           touch curl-output.log
       - name: Test stream
         run: |
-          curl -s -o /dev/null --connect-timeout 5 "https://${REMOTE_DOMAIN}:${NGINX_STREAM_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
-          curl -s -o /dev/null --connect-timeout 5 "https://${REMOTE_DOMAIN}:${NGINX_STREAM_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
-          curl -s -o /dev/null --connect-timeout 5 "https://${REMOTE_DOMAIN}:${NGINX_STREAM_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
+          curl -s --connect-timeout 5 "https://${REMOTE_DOMAIN}:${NGINX_STREAM_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
+          curl -s --connect-timeout 5 "https://${REMOTE_DOMAIN}:${NGINX_STREAM_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
+          curl -s --connect-timeout 5 "https://${REMOTE_DOMAIN}:${NGINX_STREAM_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
       - name: Test http
         run: |
-          curl -s -o /dev/null --connect-timeout 5 "http://${REMOTE_DOMAIN}:${NGINX_HTTP_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
-          curl -s -o /dev/null --connect-timeout 5 "http://${REMOTE_DOMAIN}:${NGINX_HTTP_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
-          curl -s -o /dev/null --connect-timeout 5 "http://${REMOTE_DOMAIN}:${NGINX_HTTP_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
+          curl -s --connect-timeout 5 "http://${REMOTE_DOMAIN}:${NGINX_HTTP_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
+          curl -s --connect-timeout 5 "http://${REMOTE_DOMAIN}:${NGINX_HTTP_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
+          curl -s --connect-timeout 5 "http://${REMOTE_DOMAIN}:${NGINX_HTTP_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
       - name: Upload artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

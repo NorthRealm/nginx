@@ -23,10 +23,10 @@ jobs:
         v: [
           { remote_port: "443", dig_type: "A", remote_host: "", remote_resolve: "" },
           { remote_port: "443", dig_type: "A", remote_host: "", remote_resolve: "remote_resolve" },
-          { remote_port: "443", dig_type: "AAAA", remote_host: "", remote_resolve: "" },
-          { remote_port: "443", dig_type: "AAAA", remote_host: "", remote_resolve: "remote_resolve" },
-          { remote_port: "", dig_type: "", remote_host: "icanhazip.com:443", remote_resolve: "remote_resolve" },
-          { remote_port: "", dig_type: "", remote_host: "icanhazip.com:443", remote_resolve: "" }
+#          Docker in GitHub Action doesn't enable IPv6
+#          { remote_port: "443", dig_type: "AAAA", remote_host: "", remote_resolve: "" },
+#          { remote_port: "443", dig_type: "AAAA", remote_host: "", remote_resolve: "remote_resolve" },
+          { remote_port: "", dig_type: "", remote_host: "icanhazip.com:443", remote_resolve: "remote_resolve" }
         ]
     uses: ./.github/workflows/test.yml
     with:
