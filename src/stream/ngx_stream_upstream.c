@@ -348,7 +348,13 @@ ngx_stream_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
                                            |NGX_STREAM_UPSTREAM_MAX_FAILS
                                            |NGX_STREAM_UPSTREAM_FAIL_TIMEOUT
                                            |NGX_STREAM_UPSTREAM_DOWN
-                                           |NGX_STREAM_UPSTREAM_BACKUP);
+                                           |NGX_STREAM_UPSTREAM_BACKUP
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+                                           |NGX_STREAM_UPSTREAM_USE_SOCKS5_PROXY
+                                           |NGX_STREAM_UPSTREAM_SOCKS5_USR_PWD_AUTH
+                                           |NGX_STREAM_UPSTREAM_SOCKS5_REMOTE_RESOLVE
+#endif
+                                           );
     if (uscf == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -429,9 +435,17 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     time_t                         fail_timeout;
     ngx_str_t                     *value, s;
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+    ngx_url_t                      u, su;
+#else
     ngx_url_t                      u;
+#endif
     ngx_int_t                      weight, max_conns, max_fails;
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+    ngx_uint_t                     i, sl;
+#else
     ngx_uint_t                     i;
+#endif
 #if (NGX_STREAM_UPSTREAM_ZONE)
     ngx_uint_t                     resolve;
 #endif
@@ -453,6 +467,18 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_STREAM_UPSTREAM_ZONE)
     resolve = 0;
 #endif
+
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+    ngx_memzero(&su, sizeof(ngx_url_t));
+    us->socks5.username.data = NULL;
+    us->socks5.username.len = 0;
+    us->socks5.password.data = NULL;
+    us->socks5.password.len = 0;
+    us->socks5.addrs = NULL;
+    us->socks5.naddrs = 0;
+#endif
+
+    ngx_memzero(&u, sizeof(ngx_url_t));
 
     for (i = 2; i < cf->args->nelts; i++) {
 
@@ -519,6 +545,108 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+        if (ngx_strncmp(value[i].data, "socks5=", 7) == 0) {
+
+            if (!(uscf->flags & NGX_STREAM_UPSTREAM_USE_SOCKS5_PROXY)) {
+                goto not_supported;
+            }
+
+            if (su.url.data) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "Duplicate socks5 entry");
+                return NGX_CONF_ERROR;
+            }
+
+            su.url.data = &value[i].data[7];
+            su.url.len = value[i].len - 7;
+
+            if (ngx_parse_url(cf->pool, &su) != NGX_OK) {
+                if (su.err) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "Invalid socks5 ip entry \"%V\" (%s)",
+                                       &su.url, su.err);
+                }
+
+                goto invalid;
+            }
+
+            us->socks5.addrs = su.addrs;
+            us->socks5.naddrs = su.naddrs;
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "socks5_username=", 16) == 0) {
+
+            if (!(uscf->flags & NGX_STREAM_UPSTREAM_USE_SOCKS5_PROXY)
+                || !(uscf->flags & NGX_STREAM_UPSTREAM_SOCKS5_USR_PWD_AUTH)) {
+                goto not_supported;
+            }
+
+            if (us->socks5.username.data) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "Duplicate socks5 username entry \"%V\"",
+                                   &us->socks5.username);
+
+                goto invalid;
+            }
+
+            us->socks5.username.data = &value[i].data[16];
+            us->socks5.username.len = value[i].len - 16;
+            sl = us->socks5.username.len;
+
+            if (sl < 1 || sl > 255) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "Invalid socks5 username \"%V\"",
+                                   &us->socks5.username);
+
+                goto invalid;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "socks5_password=", 16) == 0) {
+
+            if (!(uscf->flags & NGX_STREAM_UPSTREAM_USE_SOCKS5_PROXY)
+                || !(uscf->flags & NGX_STREAM_UPSTREAM_SOCKS5_USR_PWD_AUTH)) {
+                goto not_supported;
+            }
+
+            if (us->socks5.password.data) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "Duplicate socks5 password entry");
+
+                return NGX_CONF_ERROR;
+            }
+
+            us->socks5.password.data = &value[i].data[16];
+            us->socks5.password.len = value[i].len - 16;
+            sl = us->socks5.password.len;
+
+            if (sl < 1 || sl > 255) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "Invalid socks5 password");
+
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "remote_resolve", 14) == 0) {
+
+            if (!(uscf->flags & NGX_STREAM_UPSTREAM_USE_SOCKS5_PROXY)
+                || !(uscf->flags & NGX_STREAM_UPSTREAM_SOCKS5_REMOTE_RESOLVE)) {
+                goto not_supported;
+            }
+
+            u.no_resolve = 1;
+
+            continue;
+        }
+#endif        
+
         if (ngx_strcmp(value[i].data, "backup") == 0) {
 
             if (!(uscf->flags & NGX_STREAM_UPSTREAM_BACKUP)) {
@@ -563,8 +691,6 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         goto invalid;
     }
-
-    ngx_memzero(&u, sizeof(ngx_url_t));
 
     u.url = value[1];
 
@@ -649,14 +775,54 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         us->host = u.host;
 
     } else {
-        us->addrs = u.addrs;
-        us->naddrs = u.naddrs;
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+        if (u.no_resolve) {
+            us->addrs = su.addrs;
+            us->naddrs = su.naddrs;
+            us->socks5.remote_host.data = ngx_pcalloc(cf->pool, u.host.len);
+            if (!us->socks5.remote_host.data) {
+                return NGX_CONF_ERROR;
+            }
+            ngx_memcpy(us->socks5.remote_host.data, u.host.data, u.host.len);
+            us->socks5.remote_host.len = u.host.len;
+            us->socks5.remote_port = u.port;
+        } else {
+#endif
+            us->addrs = u.addrs;
+            us->naddrs = u.naddrs;
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+            us->socks5.remote_host.data = NULL;
+            us->socks5.remote_host.len = 0;
+            us->socks5.remote_port = 0;
+        }
+        us->socks5.remote_resolve = u.no_resolve;
+#endif
     }
 
 #else
 
-    us->addrs = u.addrs;
-    us->naddrs = u.naddrs;
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+    if (u.no_resolve) {
+        us->addrs = su.addrs;
+        us->naddrs = su.naddrs;
+        us->socks5.remote_host.data = ngx_pcalloc(cf->pool, u.host.len);
+        if (!us->socks5.remote_host.data) {
+            return NGX_CONF_ERROR;
+        }
+        ngx_memcpy(us->socks5.remote_host.data, u.host.data, u.host.len);
+        us->socks5.remote_host.len = u.host.len;
+        us->socks5.remote_port = u.port;
+    } else {
+#endif
+        us->addrs = u.addrs;
+        us->naddrs = u.naddrs;
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+        us->socks5.remote_host.data = NULL;
+        us->socks5.remote_host.len = 0;
+        us->socks5.remote_port = 0;
+    }
+    us->socks5.remote_resolve = u.no_resolve;
+#endif
 
 #endif
 

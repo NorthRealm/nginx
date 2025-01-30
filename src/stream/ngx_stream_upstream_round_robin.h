@@ -33,6 +33,20 @@ typedef struct {
 #endif
 
 
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+typedef struct ngx_stream_upstream_rr_peer_socks5_s    ngx_stream_upstream_rr_peer_socks5_t;
+
+struct ngx_stream_upstream_rr_peer_socks5_s {
+    struct sockaddr                 *sockaddr;
+    socklen_t                        socklen;
+    ngx_str_t                       *username;
+    ngx_str_t                       *password;
+    ngx_str_t                       *remote_host;
+    in_port_t                        remote_port;
+};
+#endif
+
+
 struct ngx_stream_upstream_rr_peer_s {
     struct sockaddr                 *sockaddr;
     socklen_t                        socklen;
@@ -59,6 +73,10 @@ struct ngx_stream_upstream_rr_peer_s {
 
     void                            *ssl_session;
     int                              ssl_session_len;
+
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+    ngx_stream_upstream_rr_peer_socks5_t   socks5;
+#endif
 
 #if (NGX_STREAM_UPSTREAM_ZONE)
     unsigned                         zombie:1;

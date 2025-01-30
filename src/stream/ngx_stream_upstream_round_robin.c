@@ -187,6 +187,37 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
 
                 peer[n].sockaddr = server[i].addrs[0].sockaddr;
                 peer[n].socklen = server[i].addrs[0].socklen;
+
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+                if (server[i].socks5.naddrs > 0) {
+                    peer[n].socks5.sockaddr = server[i].socks5.addrs[0].sockaddr;
+                    peer[n].socks5.socklen = server[i].socks5.addrs[0].socklen;
+
+                    if (server[i].socks5.username.data && server[i].socks5.username.len) {
+                        peer[n].socks5.username = &server[i].socks5.username;
+                    }
+
+                    if (server[i].socks5.password.data && server[i].socks5.password.len) {
+                        peer[n].socks5.password = &server[i].socks5.password;
+                    }
+
+                    if (server[i].socks5.remote_resolve) {
+                        peer[n].socks5.remote_host = &server[i].socks5.remote_host;
+                        peer[n].socks5.remote_port = server[i].socks5.remote_port;
+                    } else {
+                        peer[n].socks5.remote_host = NULL;
+                        peer[n].socks5.remote_port = 0;
+                    }
+                } else {
+                    peer[n].socks5.sockaddr = NULL;
+                    peer[n].socks5.socklen = 0;
+                    peer[n].socks5.username = NULL;
+                    peer[n].socks5.password = NULL;
+                    peer[n].socks5.remote_host = NULL;
+                    peer[n].socks5.remote_port = 0;
+                }
+#endif
+
                 peer[n].name = server[i].addrs[0].name;
                 peer[n].weight = server[i].weight;
                 peer[n].effective_weight = server[i].weight;
@@ -207,6 +238,37 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
             for (j = 0; j < server[i].naddrs; j++) {
                 peer[n].sockaddr = server[i].addrs[j].sockaddr;
                 peer[n].socklen = server[i].addrs[j].socklen;
+
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+                if (server[i].socks5.naddrs > 0) {
+                    peer[n].socks5.sockaddr = server[i].socks5.addrs[0].sockaddr;
+                    peer[n].socks5.socklen = server[i].socks5.addrs[0].socklen;
+
+                    if (server[i].socks5.username.data && server[i].socks5.username.len) {
+                        peer[n].socks5.username = &server[i].socks5.username;
+                    }
+
+                    if (server[i].socks5.password.data && server[i].socks5.password.len) {
+                        peer[n].socks5.password = &server[i].socks5.password;
+                    }
+
+                    if (server[i].socks5.remote_resolve) {
+                        peer[n].socks5.remote_host = &server[i].socks5.remote_host;
+                        peer[n].socks5.remote_port = server[i].socks5.remote_port;
+                    } else {
+                        peer[n].socks5.remote_host = NULL;
+                        peer[n].socks5.remote_port = 0;
+                    }
+                } else {
+                    peer[n].socks5.sockaddr = NULL;
+                    peer[n].socks5.socklen = 0;
+                    peer[n].socks5.username = NULL;
+                    peer[n].socks5.password = NULL;
+                    peer[n].socks5.remote_host = NULL;
+                    peer[n].socks5.remote_port = 0;
+                }
+#endif
+
                 peer[n].name = server[i].addrs[j].name;
                 peer[n].weight = server[i].weight;
                 peer[n].effective_weight = server[i].weight;
@@ -312,6 +374,37 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
 
                 peer[n].sockaddr = server[i].addrs[0].sockaddr;
                 peer[n].socklen = server[i].addrs[0].socklen;
+
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+                if (server[i].socks5.naddrs > 0) {
+                    peer[n].socks5.sockaddr = server[i].socks5.addrs[0].sockaddr;
+                    peer[n].socks5.socklen = server[i].socks5.addrs[0].socklen;
+
+                    if (server[i].socks5.username.data && server[i].socks5.username.len) {
+                        peer[n].socks5.username = &server[i].socks5.username;
+                    }
+
+                    if (server[i].socks5.password.data && server[i].socks5.password.len) {
+                        peer[n].socks5.password = &server[i].socks5.password;
+                    }
+
+                    if (server[i].socks5.remote_resolve) {
+                        peer[n].socks5.remote_host = &server[i].socks5.remote_host;
+                        peer[n].socks5.remote_port = server[i].socks5.remote_port;
+                    } else {
+                        peer[n].socks5.remote_host = NULL;
+                        peer[n].socks5.remote_port = 0;
+                    }
+                } else {
+                    peer[n].socks5.sockaddr = NULL;
+                    peer[n].socks5.socklen = 0;
+                    peer[n].socks5.username = NULL;
+                    peer[n].socks5.password = NULL;
+                    peer[n].socks5.remote_host = NULL;
+                    peer[n].socks5.remote_port = 0;
+                }
+#endif
+
                 peer[n].name = server[i].addrs[0].name;
                 peer[n].weight = server[i].weight;
                 peer[n].effective_weight = server[i].weight;
@@ -332,6 +425,37 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
             for (j = 0; j < server[i].naddrs; j++) {
                 peer[n].sockaddr = server[i].addrs[j].sockaddr;
                 peer[n].socklen = server[i].addrs[j].socklen;
+
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+                if (server[i].socks5.naddrs > 0) {
+                    peer[n].socks5.sockaddr = server[i].socks5.addrs[0].sockaddr;
+                    peer[n].socks5.socklen = server[i].socks5.addrs[0].socklen;
+
+                    if (server[i].socks5.username.data && server[i].socks5.username.len) {
+                        peer[n].socks5.username = &server[i].socks5.username;
+                    }
+
+                    if (server[i].socks5.password.data && server[i].socks5.password.len) {
+                        peer[n].socks5.password = &server[i].socks5.password;
+                    }
+
+                    if (server[i].socks5.remote_resolve) {
+                        peer[n].socks5.remote_host = &server[i].socks5.remote_host;
+                        peer[n].socks5.remote_port = server[i].socks5.remote_port;
+                    } else {
+                        peer[n].socks5.remote_host = NULL;
+                        peer[n].socks5.remote_port = 0;
+                    }
+                } else {
+                    peer[n].socks5.sockaddr = NULL;
+                    peer[n].socks5.socklen = 0;
+                    peer[n].socks5.username = NULL;
+                    peer[n].socks5.password = NULL;
+                    peer[n].socks5.remote_host = NULL;
+                    peer[n].socks5.remote_port = 0;
+                }
+#endif
+
                 peer[n].name = server[i].addrs[j].name;
                 peer[n].weight = server[i].weight;
                 peer[n].effective_weight = server[i].weight;
@@ -402,6 +526,14 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
     for (i = 0; i < u.naddrs; i++) {
         peer[i].sockaddr = u.addrs[i].sockaddr;
         peer[i].socklen = u.addrs[i].socklen;
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+        peer[i].socks5.sockaddr = NULL;
+        peer[i].socks5.socklen = 0;
+        peer[i].socks5.username = NULL;
+        peer[i].socks5.password = NULL;
+        peer[i].socks5.remote_host = NULL;
+        peer[i].socks5.remote_port = 0;
+#endif
         peer[i].name = u.addrs[i].name;
         peer[i].weight = 1;
         peer[i].effective_weight = 1;
@@ -532,6 +664,14 @@ ngx_stream_upstream_create_round_robin_peer(ngx_stream_session_t *s,
     if (ur->sockaddr) {
         peer[0].sockaddr = ur->sockaddr;
         peer[0].socklen = ur->socklen;
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+        peer[0].socks5.sockaddr = NULL;
+        peer[0].socks5.socklen = 0;
+        peer[0].socks5.username = NULL;
+        peer[0].socks5.password = NULL;
+        peer[0].socks5.remote_host = NULL;
+        peer[0].socks5.remote_port = 0;
+#endif        
         peer[0].name = ur->name;
         peer[0].weight = 1;
         peer[0].effective_weight = 1;
@@ -565,6 +705,14 @@ ngx_stream_upstream_create_round_robin_peer(ngx_stream_session_t *s,
 
             peer[i].sockaddr = sockaddr;
             peer[i].socklen = socklen;
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+            peer[i].socks5.sockaddr = NULL;
+            peer[i].socks5.socklen = 0;
+            peer[i].socks5.username = NULL;
+            peer[i].socks5.password = NULL;
+            peer[i].socks5.remote_host = NULL;
+            peer[i].socks5.remote_port = 0;
+#endif            
             peer[i].name.len = len;
             peer[i].name.data = p;
             peer[i].weight = 1;
@@ -663,6 +811,23 @@ ngx_stream_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
 
     pc->sockaddr = peer->sockaddr;
     pc->socklen = peer->socklen;
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+    if (peer->socks5.sockaddr != NULL) {
+        pc->socks5.sockaddr = peer->socks5.sockaddr;
+        pc->socks5.socklen = peer->socks5.socklen;
+        pc->socks5.username = peer->socks5.username;
+        pc->socks5.password = peer->socks5.password;
+        pc->socks5.host = peer->socks5.remote_host;
+        pc->socks5.port = peer->socks5.remote_port;
+    } else {
+        pc->socks5.sockaddr = NULL;
+        pc->socks5.socklen = 0;
+        pc->socks5.username = NULL;
+        pc->socks5.password = NULL;
+        pc->socks5.host = NULL;
+        pc->socks5.port = 0;
+    }
+#endif    
     pc->name = &peer->name;
 
     peer->conns++;

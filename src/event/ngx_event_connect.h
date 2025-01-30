@@ -18,6 +18,21 @@
 #define NGX_PEER_NEXT                2
 #define NGX_PEER_FAILED              4
 
+#if (NGX_SOCKS5)
+
+typedef struct {
+    struct sockaddr            *sockaddr;
+    socklen_t                   socklen;
+    ngx_str_t                  *username;
+    ngx_str_t                  *password;
+
+    ngx_str_t                  *host;
+    in_port_t                   port;
+
+    ngx_connection_handler_pt   handshake_callback;
+} ngx_socks5_conn_t;
+
+#endif
 
 typedef struct ngx_peer_connection_s  ngx_peer_connection_t;
 
@@ -38,6 +53,10 @@ struct ngx_peer_connection_s {
 
     struct sockaddr                 *sockaddr;
     socklen_t                        socklen;
+#if (NGX_SOCKS5)
+    ngx_socks5_conn_t                socks5;
+    ngx_flag_t                       use_socks5;
+#endif
     ngx_str_t                       *name;
 
     ngx_uint_t                       tries;

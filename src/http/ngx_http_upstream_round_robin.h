@@ -33,6 +33,20 @@ typedef struct {
 #endif
 
 
+#if (NGX_SOCKS5 && NGX_HTTP_SOCKS5)
+typedef struct ngx_http_upstream_rr_peer_socks5_s   ngx_http_upstream_rr_peer_socks5_t;
+
+struct ngx_http_upstream_rr_peer_socks5_s {
+    struct sockaddr                 *sockaddr;
+    socklen_t                        socklen;
+    ngx_str_t                       *username;
+    ngx_str_t                       *password;
+    ngx_str_t                       *remote_host;
+    in_port_t                        remote_port;
+};
+#endif
+
+
 struct ngx_http_upstream_rr_peer_s {
     struct sockaddr                *sockaddr;
     socklen_t                       socklen;
@@ -60,6 +74,10 @@ struct ngx_http_upstream_rr_peer_s {
 #if (NGX_HTTP_SSL || NGX_COMPAT)
     void                           *ssl_session;
     int                             ssl_session_len;
+#endif
+
+#if (NGX_SOCKS5 && NGX_HTTP_SOCKS5)
+    ngx_http_upstream_rr_peer_socks5_t   socks5;
 #endif
 
 #if (NGX_HTTP_UPSTREAM_ZONE)

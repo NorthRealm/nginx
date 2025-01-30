@@ -9,6 +9,9 @@
 #include <ngx_core.h>
 #include <ngx_stream.h>
 
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+#include <ngx_stream_socks5_module.h>
+#endif
 
 typedef struct {
     ngx_addr_t                      *addr;
@@ -124,6 +127,14 @@ static ngx_conf_bitmask_t  ngx_stream_proxy_ssl_protocols[] = {
 
 static ngx_conf_post_t  ngx_stream_proxy_ssl_conf_command_post =
     { ngx_stream_proxy_ssl_conf_command_check };
+
+#endif
+
+
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+
+static void ngx_stream_socks5_init_connection(ngx_stream_session_t *s);
+static void ngx_stream_socks5_handshake_callback(ngx_connection_t *pc);
 
 #endif
 
@@ -829,6 +840,15 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
     }
 
     pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
+
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+
+    if (u->peer.use_socks5) {
+        ngx_stream_socks5_init_connection(s);
+        return;
+    }
+
+#endif
 
 #if (NGX_STREAM_SSL)
 
@@ -2472,6 +2492,69 @@ ngx_stream_proxy_set_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *pscf)
     }
 
     return NGX_OK;
+}
+
+#endif
+
+
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+
+static void
+ngx_stream_socks5_init_connection(ngx_stream_session_t *s) {
+    ngx_int_t                      rc;
+    ngx_peer_connection_t         *peer;
+    ngx_connection_t              *pc;
+    ngx_stream_socks5_srv_conf_t  *sconf;
+
+    s->connection->log->action = "handshaking to socks5 proxy server";
+
+    peer = &s->upstream->peer;
+    pc = peer->connection;
+
+    rc = ngx_stream_socks5_handshake(s);
+
+    sconf = ngx_stream_get_module_srv_conf(s, ngx_stream_socks5_module);
+
+    if (rc == NGX_AGAIN) {
+        if (!pc->write->timer_set && sconf->timeout) {
+            ngx_add_timer(pc->write, sconf->timeout);
+        }
+
+        peer->socks5.handshake_callback = ngx_stream_socks5_handshake_callback;
+        return;
+    }
+
+    ngx_stream_socks5_handshake_callback(pc);
+}
+
+static void
+ngx_stream_socks5_handshake_callback(ngx_connection_t *pc) {
+    ngx_stream_session_t          *s;
+    ngx_stream_socks5_conn_ctx_t  *ctx;
+
+    s = pc->data;
+
+    ctx = ngx_stream_get_module_ctx(s, ngx_stream_socks5_module);
+
+    if (ctx == NULL) {
+        ngx_stream_proxy_next_upstream(s);
+        return;
+    }
+
+    if (ctx->ctx.pass) {
+        if (pc->write->timer_set) {
+            ngx_del_timer(pc->write);
+        }
+
+        ngx_stream_socks5_clear_session(s);
+        ctx = NULL;
+
+        ngx_stream_proxy_init_upstream(s);
+        return;
+    }
+
+    ngx_stream_socks5_clear_session(s);
+    ngx_stream_proxy_next_upstream(s);
 }
 
 #endif

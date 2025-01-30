@@ -45,6 +45,8 @@ USE_THREADS=NO
 
 NGX_FILE_AIO=NO
 
+USE_SOCKS5=NO
+
 QUIC_BPF=NO
 
 HTTP=YES
@@ -108,6 +110,9 @@ HTTP_UPSTREAM_RANDOM=YES
 HTTP_UPSTREAM_KEEPALIVE=YES
 HTTP_UPSTREAM_ZONE=YES
 
+# SOCKS5
+HTTP_SOCKS5=YES
+
 # STUB
 HTTP_STUB_STATUS=NO
 
@@ -134,6 +139,9 @@ STREAM_UPSTREAM_LEAST_CONN=YES
 STREAM_UPSTREAM_RANDOM=YES
 STREAM_UPSTREAM_ZONE=YES
 STREAM_SSL_PREREAD=NO
+
+# SOCKS5
+STREAM_SOCKS5=YES
 
 DYNAMIC_MODULES=
 DYNAMIC_MODULES_SRCS=
@@ -218,6 +226,8 @@ do
 
         --with-file-aio)                 NGX_FILE_AIO=YES           ;;
 
+        --with-socks5)                   USE_SOCKS5=YES             ;;
+
         --without-quic_bpf_module)       QUIC_BPF=NONE              ;;
 
         --with-ipv6)
@@ -293,6 +303,8 @@ $0: warning: the \"--with-ipv6\" option is deprecated"
         --without-http_upstream_keepalive_module) HTTP_UPSTREAM_KEEPALIVE=NO ;;
         --without-http_upstream_zone_module) HTTP_UPSTREAM_ZONE=NO  ;;
 
+        --without-http_socks5_module)    HTTP_SOCKS5=NO             ;;
+
         --with-http_perl_module)         HTTP_PERL=YES              ;;
         --with-http_perl_module=dynamic) HTTP_PERL=DYNAMIC          ;;
         --with-perl_modules_path=*)      NGX_PERL_MODULES="$value"  ;;
@@ -330,6 +342,9 @@ use the \"--with-mail_ssl_module\" option instead"
                                          STREAM_GEOIP=DYNAMIC       ;;
         --with-stream_ssl_preread_module)
                                          STREAM_SSL_PREREAD=YES     ;;
+
+        --without-stream_socks5_module)  STREAM_SOCKS5=NO           ;;
+
         --without-stream_limit_conn_module)
                                          STREAM_LIMIT_CONN=NO       ;;
         --without-stream_access_module)  STREAM_ACCESS=NO           ;;
@@ -454,6 +469,8 @@ cat << END
 
   --with-file-aio                    enable file AIO support
 
+  --with-socks5                      enable proxy_pass socks5 support
+
   --without-quic_bpf_module          disable ngx_quic_bpf_module
 
   --with-http_ssl_module             enable ngx_http_ssl_module
@@ -517,6 +534,8 @@ cat << END
   --without-http_upstream_zone_module
                                      disable ngx_http_upstream_zone_module
 
+  --without-http_socks5_module       disable ngx_http_socks5_module
+
   --with-http_perl_module            enable ngx_http_perl_module
   --with-http_perl_module=dynamic    enable dynamic ngx_http_perl_module
   --with-perl_modules_path=PATH      set Perl modules path
@@ -551,6 +570,7 @@ cat << END
   --with-stream_geoip_module         enable ngx_stream_geoip_module
   --with-stream_geoip_module=dynamic enable dynamic ngx_stream_geoip_module
   --with-stream_ssl_preread_module   enable ngx_stream_ssl_preread_module
+  --without-stream_socks5_module     disable ngx_stream_socks5_module
   --without-stream_limit_conn_module disable ngx_stream_limit_conn_module
   --without-stream_access_module     disable ngx_stream_access_module
   --without-stream_geo_module        disable ngx_stream_geo_module

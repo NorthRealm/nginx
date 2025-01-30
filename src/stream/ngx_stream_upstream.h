@@ -24,6 +24,11 @@
 #define NGX_STREAM_UPSTREAM_MODIFY        0x0040
 #define NGX_STREAM_UPSTREAM_MAX_CONNS     0x0100
 
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+#define NGX_STREAM_UPSTREAM_USE_SOCKS5_PROXY       0x1000
+#define NGX_STREAM_UPSTREAM_SOCKS5_USR_PWD_AUTH    0x2000
+#define NGX_STREAM_UPSTREAM_SOCKS5_REMOTE_RESOLVE  0x4000
+#endif
 
 #define NGX_STREAM_UPSTREAM_NOTIFY_CONNECT     0x1
 
@@ -50,6 +55,19 @@ typedef struct {
 } ngx_stream_upstream_peer_t;
 
 
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+typedef struct {
+    ngx_addr_t                        *addrs;
+    ngx_uint_t                         naddrs;
+    ngx_str_t                          username;
+    ngx_str_t                          password;
+    ngx_flag_t                         remote_resolve;
+    ngx_str_t                          remote_host;
+    in_port_t                          remote_port;
+} ngx_stream_upstream_server_socks5_t;
+#endif
+
+
 typedef struct {
     ngx_str_t                          name;
     ngx_addr_t                        *addrs;
@@ -62,6 +80,10 @@ typedef struct {
     ngx_uint_t                         down;
 
     unsigned                           backup:1;
+
+#if (NGX_SOCKS5 && NGX_STREAM_SOCKS5)
+    ngx_stream_upstream_server_socks5_t  socks5;
+#endif
 
 #if (NGX_STREAM_UPSTREAM_ZONE)
     ngx_str_t                          host;

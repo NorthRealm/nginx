@@ -951,6 +951,19 @@ if [ $HTTP = YES ]; then
 
         . auto/module
     fi
+
+    if [ $USE_SOCKS5 = YES ] && [ $HTTP_SOCKS5 = YES ]; then
+        have=NGX_HTTP_SOCKS5 . auto/have
+
+        ngx_module_name=ngx_http_socks5_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_socks5_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_SOCKS5
+
+        . auto/module
+    fi
 fi
 
 
@@ -1237,6 +1250,19 @@ if [ $STREAM != NO ]; then
 
         . auto/module
     fi
+
+    if [ $USE_SOCKS5 = YES ] && [ $STREAM_SOCKS5 = YES ]; then
+        have=NGX_STREAM_SOCKS5 . auto/have
+
+        ngx_module_name=ngx_stream_socks5_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_socks5_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_SOCKS5
+
+        . auto/module
+    fi
 fi
 
 
@@ -1375,6 +1401,22 @@ if [ $USE_OPENSSL_QUIC = YES ]; then
 
         have=NGX_QUIC_BPF . auto/have
     fi
+fi
+
+
+if [ $USE_SOCKS5 = YES ]; then
+    have=NGX_SOCKS5 . auto/have
+
+    ngx_module_type=CORE
+    ngx_module_name=ngx_event_socks5_module
+    ngx_module_incs=
+    ngx_module_deps=src/event/ngx_socks5.h
+    ngx_module_srcs=src/event/ngx_socks5.c
+    ngx_module_libs=
+    ngx_module_link=YES
+    ngx_module_order=
+
+    . auto/module
 fi
 
 

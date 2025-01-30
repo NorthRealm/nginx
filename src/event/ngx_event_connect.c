@@ -10,6 +10,9 @@
 #include <ngx_event.h>
 #include <ngx_event_connect.h>
 
+#if (NGX_SOCKS5)
+#include <ngx_socks5.h>
+#endif
 
 #if (NGX_HAVE_TRANSPARENT_PROXY)
 static ngx_int_t ngx_event_connect_set_transparent(ngx_peer_connection_t *pc,
@@ -31,6 +34,10 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_event_t       *rev, *wev;
     ngx_connection_t  *c;
 
+#if (NGX_SOCKS5)
+    ngx_flag_t         socks5;
+#endif
+
     rc = pc->get(pc, pc->data);
     if (rc != NGX_OK) {
         return rc;
@@ -38,7 +45,13 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     type = (pc->type ? pc->type : SOCK_STREAM);
 
+#if (NGX_SOCKS5)
+    socks5 = ngx_socks5_peer_verify(pc);
+
+    s = ngx_socket(!socks5 ? pc->sockaddr->sa_family : pc->socks5.sockaddr->sa_family, type, 0);
+#else
     s = ngx_socket(pc->sockaddr->sa_family, type, 0);
+#endif
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0, "%s socket %d",
                    (type == SOCK_STREAM) ? "stream" : "dgram", s);
@@ -206,7 +219,18 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pc->log, 0,
                    "connect to %V, fd:%d #%uA", pc->name, s, c->number);
 
+#if (NGX_SOCKS5)
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pc->log, 0,
+                   "socks5 proxy will%sbe used, fd:%d #%uA",
+                   socks5 ? " " : " not ",
+                   s, c->number);
+
+    pc->use_socks5 = socks5;
+
+    rc = connect(s, socks5 ? pc->socks5.sockaddr : pc->sockaddr, socks5 ? pc->socks5.socklen : pc->socklen);
+#else
     rc = connect(s, pc->sockaddr, pc->socklen);
+#endif
 
     if (rc == -1) {
         err = ngx_socket_errno;
