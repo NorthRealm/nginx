@@ -5,10 +5,17 @@ WORKDIR /app
 USER 0
 
 ADD ./auto /app/auto
-ADD ./src /app/src
+ADD ./conf /app/conf
+ADD ./contrib /app/contrib
+ADD ./docs /app/docs
 ADD ./misc /app/misc
+ADD ./src /app/src
 
-RUN <<EOF
+RUN apk add --no-cache bash
+
+RUN <<EOF bash
+set -ex
+
 apk add --no-cache build-base make openssl git zlib-dev openssl-dev pcre-dev
 git clone https://github.com/GetPageSpeed/ngx_security_headers.git ngx_security_headers
 git clone https://github.com/yaoweibin/ngx_http_substitutions_filter_module.git ngx_http_substitutions_filter_module
@@ -39,22 +46,16 @@ objs/nginx -V
 rm -rf ngx_security_headers
 rm -rf ngx_http_substitutions_filter_module
 rm -rf ngx_stream_minecraft_forward_module
-EOF
 
-ADD ./conf /app/conf
-ADD ./docs/html /app/html
-
-RUN <<EOS
-
-cat << EOF > /docker-entrypoint.sh
+cat << EOS > /docker-entrypoint.sh
 #!/bin/sh
 
 /app/objs/nginx -p /app -g "daemon off;"
 
-EOF
-chmod +x /docker-entrypoint.sh
-
 EOS
+chmod +x /docker-entrypoint.sh
+EOF
+
 
 EXPOSE 80
 EXPOSE 443
