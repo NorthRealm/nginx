@@ -10,6 +10,7 @@ ADD ./contrib /app/contrib
 ADD ./docs /app/docs
 ADD ./misc /app/misc
 ADD ./src /app/src
+ADD ./LICENSE /app/
 
 RUN apk add --no-cache bash
 
