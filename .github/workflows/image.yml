@@ -1,8 +1,6 @@
 name: Build Docker image
 
 on:
-  schedule:
-    - cron: "0 0 * * *"
   push:
     paths:
       - "Dockerfile"
@@ -32,49 +30,61 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     timeout-minutes: 10
     name: Build nightly
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        with:
+          fetch-depth: 0
 
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GHA_PACKAGES }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
 
       - name: Setup
         id: env-setup
         run: |
-          build_image_tag=ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}:nightly
-          build_image_tag=$(echo $build_image_tag | tr '[:upper:]' '[:lower:]')
-          echo "build_image_tag=$build_image_tag" >> $GITHUB_OUTPUT
+          docker_base_image="ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}"
+          docker_base_image=$(echo $docker_base_image | tr '[:upper:]' '[:lower:]')
+          echo "docker_base_image=$docker_base_image" >> $GITHUB_OUTPUT
+          
+          docker_tag="nightly"
+          echo "docker_tag=$docker_tag" >> $GITHUB_OUTPUT  
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.env-setup.outputs.docker_base_image }}
+          tags: ${{ steps.env-setup.outputs.docker_tag }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
-          platforms: linux/amd64
           push: true
-          tags: ${{ steps.env-setup.outputs.build_image_tag }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   clean:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     steps:
-      - name: Delete untagged images
-        uses: Chizkiyahu/delete-untagged-ghcr-action@v5
+      - uses: NorthRealm/reusable-actions/delete-untagged-ghcr-action@main
         with:
-          token: ${{ secrets.GHA_PACKAGES }}
-          repository_owner: ${{ github.repository_owner }}
           package_name: ${{ env.PACKAGE_NAME }}
-          untagged_only: true
-          owner_type: ${{ github.event.organization && 'org' || 'user' }}
         continue-on-error: true
