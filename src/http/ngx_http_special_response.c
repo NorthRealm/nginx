@@ -273,11 +273,9 @@ CRLF
 
 static char ngx_http_error_497_page[] =
 "<html>" CRLF
-"<head><title>400 The plain HTTP request was sent to HTTPS port</title></head>"
-CRLF
+"<head><title>400 Bad Request</title></head>" CRLF
 "<body>" CRLF
 "<center><h1>400 Bad Request</h1></center>" CRLF
-"<center>The plain HTTP request was sent to HTTPS port</center>" CRLF
 ;
 
 

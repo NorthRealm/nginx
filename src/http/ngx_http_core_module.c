@@ -1139,16 +1139,10 @@ ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
         }
 
         if (rc == NGX_HTTP_FORBIDDEN || rc == NGX_HTTP_UNAUTHORIZED) {
-            if (rc == NGX_HTTP_FORBIDDEN) {
-                rc = NGX_ERROR;
-                goto end_of_access_phase;
-            }
             if (r->access_code != NGX_HTTP_UNAUTHORIZED) {
                 r->access_code = rc;
             }
-
-            r->phase_handler++;
-            return NGX_AGAIN;
+            rc = NGX_ERROR;
         }
     }
 
@@ -1158,7 +1152,6 @@ ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
         return ngx_http_core_auth_delay(r);
     }
 
-end_of_access_phase:
     ngx_http_finalize_request(r, rc);
     return NGX_OK;
 }
