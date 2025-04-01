@@ -25,7 +25,10 @@ jobs:
       NGINX_HTTP_LISTEN_PORT: 19001
       PROXY_QUERY_COUNT: 30
       PROXY_QUERY_ROUNDWAIT: 1
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     timeout-minutes: 10
     strategy:
       fail-fast: false
@@ -45,26 +48,36 @@ jobs:
           echo "DIG_TYPE=${{ inputs.dig_type }}" >> $GITHUB_ENV
           echo "REMOTE_HOST=${{ inputs.remote_host }}" >> $GITHUB_ENV
           echo "REMOTE_RESOLVE=${{ inputs.remote_resolve }}" >> $GITHUB_ENV
+      
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
       - name: Install packages
         run: |
           apt-get -y update
           apt-get -y install curl wget git ca-certificates tar build-essential libc6 libpcre3-dev openssl libssl-dev zlib1g-dev dnsutils
+      
       - name: Setup
+        if: ${{ always() }}
         run: |
           echo "ARTIFACT_NAME_SUFFIX=$(openssl rand -hex 32)-$(date +%s%N)" >> $GITHUB_ENV
+      
       - name: Install goproxy
         run: |
-          wget --no-verbose -O "proxy.tar.gz" "https://github.com/snail007/goproxy/releases/download/v14.8/proxy-linux-amd64.tar.gz"
+          # Retard deleting old releases.
+          wget --no-verbose -O "proxy.tar.gz" "https://github.com/snail007/goproxy/releases/download/v14.9/proxy-linux-amd64.tar.gz"
           tar -xf proxy.tar.gz
           chmod +x proxy
+      
       - name: Compile Nginx
         run: |
           cp auto/configure .
           chmod +x configure
           ./configure --with-socks5 --with-stream --with-debug --with-http_ssl_module
           make
+      
       - name: Setup goproxy
         run: |
           if [[ -z "$REMOTE_HOST" ]]; then
@@ -76,12 +89,14 @@ jobs:
           else
             echo PROXY_DNS="--dns-address "8.8.8.8:53" --dns-ttl 300" >> $GITHUB_ENV
           fi
+      
       - name: Setup hosts
         run: |
           cat << EOF >> /etc/hosts
           127.0.0.1  $REMOTE_DOMAIN
           EOF
           cat /etc/hosts
+      
       - name: Setup Nginx
         run: |
           rm -rf logs
@@ -120,7 +135,6 @@ jobs:
           }
 
           stream {
-
               socks5_timeout 3;
 
               upstream stream-test {
@@ -134,6 +148,7 @@ jobs:
           }
 
           EOF
+      
       - name: Run
         run: |
           objs/nginx -V
@@ -153,16 +168,19 @@ jobs:
             sleep $PROXY_QUERY_ROUNDWAIT
           done
           touch curl-output.log
+      
       - name: Test stream
         run: |
           curl -s --connect-timeout 5 "https://${REMOTE_DOMAIN}:${NGINX_STREAM_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
           curl -s --connect-timeout 5 "https://${REMOTE_DOMAIN}:${NGINX_STREAM_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
           curl -s --connect-timeout 5 "https://${REMOTE_DOMAIN}:${NGINX_STREAM_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
-      - name: Test http
+      
+      - name: Test HTTP
         run: |
           curl -s --connect-timeout 5 "http://${REMOTE_DOMAIN}:${NGINX_HTTP_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
           curl -s --connect-timeout 5 "http://${REMOTE_DOMAIN}:${NGINX_HTTP_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
           curl -s --connect-timeout 5 "http://${REMOTE_DOMAIN}:${NGINX_HTTP_LISTEN_PORT}" --header "Host: ${REMOTE_DOMAIN}" 2>&1 >> curl-output.log
+      
       - name: Upload artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -172,6 +190,6 @@ jobs:
             **/curl-output.log
             logs/*
             conf/nginx.conf
-          retention-days: 3
+          retention-days: 1
           overwrite: true
           name: Action-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}-${{ env.ARTIFACT_NAME_SUFFIX }}

@@ -1,4 +1,4 @@
-FROM alpine:3.21
+FROM alpine:3.21 as build-env
 
 WORKDIR /app
 
@@ -57,6 +57,37 @@ EOS
 chmod +x /docker-entrypoint.sh
 EOF
 
+
+FROM alpine:3.21
+
+RUN <<EOS
+(deluser --remove-home xfs 2>/dev/null || true)
+(deluser --remove-home www-data 2>/dev/null || true)
+(delgroup www-data 2>/dev/null || true)
+(delgroup xfs 2>/dev/null || true)
+addgroup -S -g 33 www-data
+adduser -S -D -u 33 -s /sbin/nologin -h /var/www -G www-data www-data
+apk add --no-cache gcc musl-dev openssl zlib pcre
+mkdir -p /app/logs
+touch /app/logs/access.log
+touch /app/logs/error.log
+EOS
+
+COPY --from=build-env --chown=www-data:www-data --chmod=640 /app/auto /app/auto
+COPY --from=build-env --chown=www-data:www-data --chmod=640 /app/conf /app/conf
+COPY --from=build-env --chown=www-data:www-data --chmod=640 /app/contrib /app/contrib
+COPY --from=build-env --chown=www-data:www-data --chmod=640 /app/docs /app/docs
+COPY --from=build-env --chown=www-data:www-data --chmod=640 /app/misc /app/misc
+COPY --from=build-env --chown=www-data:www-data --chmod=750 /app/objs /app/objs
+COPY --from=build-env --chown=www-data:www-data --chmod=400 /app/src /app/src
+COPY --from=build-env --chown=www-data:www-data --chmod=770 /docker-entrypoint.sh /docker-entrypoint.sh
+
+RUN <<EOS
+chown -R www-data:www-data /app
+chmod 755 /app
+EOS
+
+USER www-data
 
 EXPOSE 80
 EXPOSE 443
