@@ -37,6 +37,10 @@ jobs:
       id-token: write
     timeout-minutes: 10
     name: Build nightly
+    outputs:
+      digest: ${{ steps.build-push.outputs.digest }}
+      image: ${{ steps.env-setup.outputs.docker_base_image }}
+      tag: ${{ steps.env-setup.outputs.docker_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -69,12 +73,47 @@ jobs:
 
       - name: Build and push
         uses: docker/build-push-action@v5
+        id: build-push
         with:
           context: .
           file: Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    timeout-minutes: 10
+    name: Test image
+    services:
+      nginx:
+        image: "${{ needs.build.outputs.image }}@${{ needs.build.outputs.digest }}"
+        credentials: 
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+        ports:
+          - 8080:80
+    steps:
+      - name: Test nginx reachable
+        run: |
+          declare -i max_query_count=5
+          declare -i i_count=0
+          while [ $i_count -le $max_query_count ]; do
+            i_count+=1
+            if curl --verbose http://127.0.0.1:8080; then
+              break;
+            elif [[ $i_count -eq $max_query_count ]]; then
+              echo "QUERY FAILURE."
+              exit 1;
+            fi
+            sleep 3
+          done
+
 
   clean:
     needs: build
