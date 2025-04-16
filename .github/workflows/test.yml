@@ -5,12 +5,30 @@ on:
     inputs:
       remote_port:
         type: string
+        required: true
       dig_type:
         type: string
+        required: true
       remote_host:
         type: string
+        required: true
       remote_resolve:
         type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      remote_port:
+        type: string
+        required: true
+      dig_type:
+        type: string
+        required: true
+      remote_host:
+        type: string
+        required: true
+      remote_resolve:
+        type: string
+        required: true
 
 
 defaults:
@@ -48,6 +66,7 @@ jobs:
           echo "DIG_TYPE=${{ inputs.dig_type }}" >> $GITHUB_ENV
           echo "REMOTE_HOST=${{ inputs.remote_host }}" >> $GITHUB_ENV
           echo "REMOTE_RESOLVE=${{ inputs.remote_resolve }}" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME_SUFFIX=$(openssl rand -hex 32)-$(date +%s%N)" >> $GITHUB_ENV
       
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,11 +77,6 @@ jobs:
         run: |
           apt-get -y update
           apt-get -y install curl wget git ca-certificates tar build-essential libc6 libpcre3-dev openssl libssl-dev zlib1g-dev dnsutils
-      
-      - name: Setup
-        if: ${{ always() }}
-        run: |
-          echo "ARTIFACT_NAME_SUFFIX=$(openssl rand -hex 32)-$(date +%s%N)" >> $GITHUB_ENV
       
       - name: Install goproxy
         run: |

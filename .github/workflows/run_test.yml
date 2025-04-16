@@ -19,23 +19,29 @@ on:
 
 jobs:
   run_test:
+    name: Run test (Remote Port ${{ matrix.remote_port }}) (Dig type ${{ matrix.dig_type }}) (Remote Host ${{ matrix.remote_host }}) (Remote resolve ${{ matrix.remote_resolve }})"
     permissions:
       contents: read
       packages: read
     strategy:
       fail-fast: false
       matrix:
-        v: [
-          { remote_port: "443", dig_type: "A", remote_host: "", remote_resolve: "" },
-          { remote_port: "443", dig_type: "A", remote_host: "", remote_resolve: "remote_resolve" },
-#          Docker in GitHub Action doesn't enable IPv6
-#          { remote_port: "443", dig_type: "AAAA", remote_host: "", remote_resolve: "" },
-#          { remote_port: "443", dig_type: "AAAA", remote_host: "", remote_resolve: "remote_resolve" },
-          { remote_port: "", dig_type: "", remote_host: "icanhazip.com:443", remote_resolve: "remote_resolve" }
-        ]
+        include:
+          - remote_port: "443"
+            dig_type: "A"
+            remote_host: ""
+            remote_resolve: ""
+          - remote_port: "443"
+            dig_type: "A"
+            remote_host: ""
+            remote_resolve: "remote_resolve"
+          - remote_port: ""
+            dig_type: ""
+            remote_host: "icanhazip.com:443"
+            remote_resolve: "remote_resolve"
     uses: ./.github/workflows/test.yml
     with:
-      remote_port: ${{ matrix.v.remote_port }}
-      dig_type: ${{ matrix.v.dig_type }}
-      remote_host: ${{ matrix.v.remote_host }}
-      remote_resolve: ${{ matrix.v.remote_resolve }}
+      remote_port: ${{ matrix.remote_port }}
+      dig_type: ${{ matrix.dig_type }}
+      remote_host: ${{ matrix.remote_host }}
+      remote_resolve: ${{ matrix.remote_resolve }}
