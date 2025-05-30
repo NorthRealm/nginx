@@ -370,8 +370,6 @@ use the \"--with-mail_ssl_module\" option instead"
         --add-module=*)                  NGX_ADDONS="$NGX_ADDONS $value" ;;
         --add-dynamic-module=*)          DYNAMIC_ADDONS="$DYNAMIC_ADDONS $value" ;;
 
-        --with-compat)                   NGX_COMPAT=YES             ;;
-
         --with-cc=*)                     CC="$value"                ;;
         --with-cpp=*)                    CPP="$value"               ;;
         --with-cc-opt=*)                 NGX_CC_OPT="$value"        ;;
