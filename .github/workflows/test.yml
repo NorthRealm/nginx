@@ -18,15 +18,19 @@ on:
   workflow_dispatch:
     inputs:
       remote_port:
+        description: remote_port
         type: string
         required: true
       dig_type:
+        description: dig_type
         type: string
         required: true
       remote_host:
+        description: remote_host
         type: string
         required: true
       remote_resolve:
+        description: remote_resolve
         type: string
         required: true
 
@@ -38,35 +42,34 @@ defaults:
 
 jobs:
   test:
-    env:
-      NGINX_STREAM_LISTEN_PORT: 19000
-      NGINX_HTTP_LISTEN_PORT: 19001
-      PROXY_QUERY_COUNT: 30
-      PROXY_QUERY_ROUNDWAIT: 1
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         docker_image: ["debian:bullseye", "debian:bookworm", "ubuntu:24.04", "ubuntu:22.04"]
         PROXY_IP: ["127.0.0.1:59999", "[::1]:59999"]
         REMOTE_DOMAIN: ["icanhazip.com"]
+    env:
+      NGINX_STREAM_LISTEN_PORT: 19000
+      NGINX_HTTP_LISTEN_PORT: 19001
+      PROXY_QUERY_COUNT: 30
+      PROXY_QUERY_ROUNDWAIT: 1
+      PROXY_IP: ${{ matrix.PROXY_IP }}
+      REMOTE_DOMAIN: ${{ matrix.REMOTE_DOMAIN }}
+      REMOTE_PORT: ${{ inputs.remote_port }}
+      DIG_TYPE: ${{ inputs.dig_type }}
+      REMOTE_HOST: ${{ inputs.remote_host }}
+      REMOTE_RESOLVE: ${{ inputs.remote_resolve }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    timeout-minutes: 10
     container:
       image: ${{ matrix.docker_image }}
     name: "Test in ${{ matrix.docker_image }} (Proxy IP ${{ matrix.PROXY_IP }}) (Remote Domain ${{ matrix.REMOTE_DOMAIN }}) (Remote Port ${{ inputs.remote_port }}) (Dig type ${{ inputs.dig_type }}) (Remote Host ${{ inputs.remote_host }}) (Remote resolve ${{ inputs.remote_resolve }})"
     steps:
       - name: Setup
-        run: |
-          echo "PROXY_IP=${{ matrix.PROXY_IP }}" >> $GITHUB_ENV
-          echo "REMOTE_DOMAIN=${{ matrix.REMOTE_DOMAIN }}" >> $GITHUB_ENV
-          echo "REMOTE_PORT=${{ inputs.remote_port }}" >> $GITHUB_ENV
-          echo "DIG_TYPE=${{ inputs.dig_type }}" >> $GITHUB_ENV
-          echo "REMOTE_HOST=${{ inputs.remote_host }}" >> $GITHUB_ENV
-          echo "REMOTE_RESOLVE=${{ inputs.remote_resolve }}" >> $GITHUB_ENV
-          echo "ARTIFACT_NAME_SUFFIX=$(openssl rand -hex 32)-$(date +%s%N)" >> $GITHUB_ENV
+        run: echo "ARTIFACT_NAME_SUFFIX=$(openssl rand -hex 32)-$(date +%s%N)" >> $GITHUB_ENV
       
       - name: Checkout
         uses: actions/checkout@v4
@@ -80,8 +83,7 @@ jobs:
       
       - name: Install goproxy
         run: |
-          # Retard deleting old releases.
-          wget --no-verbose -O "proxy.tar.gz" "https://github.com/snail007/goproxy/releases/download/v14.9/proxy-linux-amd64.tar.gz"
+          wget --no-verbose -O "proxy.tar.gz" "https://github.com/snail007/goproxy/releases/download/v15.0/proxy-linux-amd64.tar.gz"
           tar -xf proxy.tar.gz
           chmod +x proxy
       
