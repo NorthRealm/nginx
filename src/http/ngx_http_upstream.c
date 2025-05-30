@@ -6529,7 +6529,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
-        if (ngx_strncmp(value[i].data, "remote_resolve", 14) == 0) {
+        if (ngx_strncmp(value[i].data, "socks5_remote_resolve", 21) == 0) {
 
             if (!(uscf->flags & NGX_HTTP_UPSTREAM_USE_SOCKS5_PROXY)
                 || !(uscf->flags & NGX_HTTP_UPSTREAM_SOCKS5_REMOTE_RESOLVE)) {
