@@ -813,15 +813,15 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
         pc->socks5.socklen = peer->socks5.socklen;
         pc->socks5.username = peer->socks5.username;
         pc->socks5.password = peer->socks5.password;
-        pc->socks5.host = peer->socks5.remote_host;
-        pc->socks5.port = peer->socks5.remote_port;
+        pc->socks5.target_host = peer->socks5.remote_host;
+        pc->socks5.target_port = peer->socks5.remote_port;
     } else {
         pc->socks5.sockaddr = NULL;
         pc->socks5.socklen = 0;
         pc->socks5.username = NULL;
         pc->socks5.password = NULL;
-        pc->socks5.host = NULL;
-        pc->socks5.port = 0;
+        pc->socks5.target_host = NULL;
+        pc->socks5.target_port = 0;
     }
 #endif
 

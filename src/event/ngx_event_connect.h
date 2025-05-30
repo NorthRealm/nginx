@@ -26,8 +26,9 @@ typedef struct {
     ngx_str_t                  *username;
     ngx_str_t                  *password;
 
-    ngx_str_t                  *host;
-    in_port_t                   port;
+    /* destination server to be reached through proxy */
+    ngx_str_t                  *target_host;
+    in_port_t                   target_port;
 
     ngx_connection_handler_pt   handshake_callback;
 } ngx_socks5_conn_t;

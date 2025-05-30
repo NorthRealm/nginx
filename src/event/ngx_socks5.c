@@ -451,10 +451,10 @@ ngx_socks5_proxy_request(ngx_socks5_conn_ctx_t *ctx) {
 
         ngx_memzero(raw_ip, sizeof(raw_ip));
 
-        if (peer->socks5.host) {
+        if (peer->socks5.target_host) {
             atyp = NGX_SOCKS5_ATYP_DOMAIN;
 
-            rl = 1 + 1 + 1 + 1 + 1 + peer->socks5.host->len + 2;
+            rl = 1 + 1 + 1 + 1 + 1 + peer->socks5.target_host->len + 2;
             ctx->request = ngx_create_temp_buf(ctx->pool, rl);
 
             if (ctx->request == NULL) {
@@ -465,20 +465,20 @@ ngx_socks5_proxy_request(ngx_socks5_conn_ctx_t *ctx) {
             ctx->request->pos[1] = NGX_SOCKS5_CMD_CONNECT;
             ctx->request->pos[2] = NGX_SOCKS5_RESERVED;
             ctx->request->pos[3] = atyp;
-            ctx->request->pos[4] = peer->socks5.host->len;
+            ctx->request->pos[4] = peer->socks5.target_host->len;
 
             bufpos = ngx_cpymem(ctx->request->pos + 5,
-                                peer->socks5.host->data,
-                                peer->socks5.host->len);
+                                peer->socks5.target_host->data,
+                                peer->socks5.target_host->len);
 
-            port = htons(peer->socks5.port);
+            port = htons(peer->socks5.target_port);
 
 #if (NGX_DEBUG)
     ngx_log_debug5(NGX_LOG_DEBUG_EVENT, pc->log, 0, "socks5 proxy request: "
                                                     "VER: %d, CMD: %d, "
                                                     "ATYP: %d, DST.ADDR: %V, DST.PORT: %d",
                                                     ctx->request->start[0], ctx->request->start[1],
-                                                    ctx->request->start[3], peer->socks5.host, port);
+                                                    ctx->request->start[3], peer->socks5.target_host, peer->socks5.target_port);
 #endif
         } else {
             switch (peer->sockaddr->sa_family) {
@@ -615,13 +615,6 @@ ngx_socks5_proxy_response(ngx_socks5_conn_ctx_t *ctx) {
 
     ngx_int_t                      pass;
 
-#if (NGX_DEBUG)
-    u_char                         bnd_raw_ip[16], bnd_domain[256], v_ip[256];
-    in_port_t                      bnd_port;
-
-    bnd_port = 0;
-#endif
-
     pass = 0;
 
     peer = ctx->peer;
@@ -743,36 +736,12 @@ ngx_socks5_proxy_response(ngx_socks5_conn_ctx_t *ctx) {
             break;
 
         case NGX_SOCKS5_ATYP_IPV4:
-#if (NGX_DEBUG)
-            ngx_memzero(bnd_raw_ip, sizeof(bnd_raw_ip));
-            ngx_memzero(v_ip, sizeof(v_ip));
-            ngx_memcpy(bnd_raw_ip, ctx->response->pos, 4);
-            bnd_port = ((in_port_t)ctx->response->pos[5] << 8);
-            bnd_port += ctx->response->pos[4];
-
-            ngx_inet_ntop(AF_INET, bnd_raw_ip, v_ip, 256);
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0, "socks5 proxy response: "
-                                                            "BND.ADDR: %s, BND.PORT: %d",
-                                                            v_ip, htons(bnd_port));
-#endif
             pass = 1;
 
             break;
 
 #if (NGX_HAVE_INET6)
         case NGX_SOCKS5_ATYP_IPV6:
-#if (NGX_DEBUG)
-            ngx_memzero(bnd_raw_ip, sizeof(bnd_raw_ip));
-            ngx_memzero(v_ip, sizeof(v_ip));
-            ngx_memcpy(bnd_raw_ip, ctx->response->pos, 16);
-            bnd_port = ((in_port_t)ctx->response->pos[17] << 8);
-            bnd_port += ctx->response->pos[16];
-
-            ngx_inet_ntop(AF_INET6, bnd_raw_ip, v_ip, 256);
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0, "socks5 proxy response: "
-                                                            "BND.ADDR: %s, BND.PORT: %d",
-                                                            v_ip, htons(bnd_port));
-#endif
             pass = 1;
 
             break;
@@ -796,16 +765,6 @@ ngx_socks5_proxy_response(ngx_socks5_conn_ctx_t *ctx) {
                 }
 
             } else {
-#if (NGX_DEBUG)
-                ngx_memzero(bnd_domain, size);
-                ngx_memcpy(bnd_domain, ctx->response->pos, size - 2);
-                bnd_port = ((in_port_t)ctx->response->pos[size - 1] << 8);
-                bnd_port += ctx->response->pos[size - 2];
-
-                ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0, "socks5 proxy response: "
-                                                                "BND.ADDR: %s, BND.PORT: %d",
-                                                                bnd_domain, htons(bnd_port));
-#endif
                 pass = 1;
             }
 

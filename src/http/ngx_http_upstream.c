@@ -6458,7 +6458,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             if (ngx_parse_url(cf->pool, &su) != NGX_OK) {
                 if (su.err) {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                       "Invalid socks5 ip entry \"%V\" (%s)",
+                                       "Invalid socks5 entry \"%V\" (%s)",
                                        &su.url, su.err);
                 }
 
