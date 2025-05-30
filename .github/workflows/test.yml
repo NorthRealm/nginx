@@ -48,6 +48,7 @@ jobs:
         docker_image: ["debian:bullseye", "debian:bookworm", "ubuntu:24.04", "ubuntu:22.04"]
         PROXY_IP: ["127.0.0.1:59999", "[::1]:59999"]
         REMOTE_DOMAIN: ["icanhazip.com"]
+        os: ["ubuntu-latest", "ubuntu-24.04-arm"]
     env:
       NGINX_STREAM_LISTEN_PORT: 19000
       NGINX_HTTP_LISTEN_PORT: 19001
@@ -59,41 +60,74 @@ jobs:
       DIG_TYPE: ${{ inputs.dig_type }}
       REMOTE_HOST: ${{ inputs.remote_host }}
       REMOTE_RESOLVE: ${{ inputs.remote_resolve }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: read
       packages: read
     timeout-minutes: 10
     container:
       image: ${{ matrix.docker_image }}
-    name: "Test in ${{ matrix.docker_image }} (Proxy IP ${{ matrix.PROXY_IP }}) (Remote Domain ${{ matrix.REMOTE_DOMAIN }}) (Remote Port ${{ inputs.remote_port }}) (Dig type ${{ inputs.dig_type }}) (Remote Host ${{ inputs.remote_host }}) (Remote resolve ${{ inputs.remote_resolve }})"
+    name: "Test in ${{ matrix.docker_image }} on ${{ matrix.os }} (Proxy IP ${{ matrix.PROXY_IP }}) (Remote Domain ${{ matrix.REMOTE_DOMAIN }}) (Remote Port ${{ inputs.remote_port }}) (Dig type ${{ inputs.dig_type }}) (Remote Host ${{ inputs.remote_host }}) (Remote resolve ${{ inputs.remote_resolve }})"
     steps:
-      - name: Setup
-        run: echo "ARTIFACT_NAME_SUFFIX=$(openssl rand -hex 32)-$(date +%s%N)" >> $GITHUB_ENV
-      
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
+      - name: Setup
+        uses: NorthRealm/fast-apt-mirror.sh@p1
+      
+      - name: Setup
+        run: |
+          apt-get update
+          apt-get -y install openssl libssl-dev
+          echo "ARTIFACT_NAME_SUFFIX=$(openssl rand -hex 32)-$(date +%s%N)" >> $GITHUB_ENV
+
       - name: Install packages
         run: |
           apt-get -y update
           apt-get -y install curl wget git ca-certificates tar build-essential libc6 libpcre3-dev openssl libssl-dev zlib1g-dev dnsutils
       
+      - name: Compile Nginx (no socks5)
+        run: |
+          cp auto/configure .
+          chmod +x configure
+          ./configure
+          make
+          ./configure --with-stream
+          make
+          ./configure --with-debug
+          make
+          ./configure --with-http_ssl_module
+          make
+          ./configure --with-stream --with-debug
+          make
+          ./configure --with-debug --with-http_ssl_module
+          make
+          ./configure --with-stream --with-http_ssl_module
+          make
+          ./configure --with-stream --with-debug --with-http_ssl_module
+          make
+      
+      - name: Compile Nginx
+        run: |
+          ./configure --with-socks5 --with-stream --with-debug --with-http_ssl_module
+          make
+      
       - name: Install goproxy
+        if: ${{ runner.arch == 'ARM64' }}
+        run: |
+          wget --no-verbose -O "proxy.tar.gz" "https://github.com/snail007/goproxy/releases/download/v15.0/proxy-linux-arm64-v8.tar.gz"
+          tar -xf proxy.tar.gz
+          chmod +x proxy
+      
+      - name: Install goproxy
+        if: ${{ runner.arch == 'X64' }}
         run: |
           wget --no-verbose -O "proxy.tar.gz" "https://github.com/snail007/goproxy/releases/download/v15.0/proxy-linux-amd64.tar.gz"
           tar -xf proxy.tar.gz
           chmod +x proxy
-      
-      - name: Compile Nginx
-        run: |
-          cp auto/configure .
-          chmod +x configure
-          ./configure --with-socks5 --with-stream --with-debug --with-http_ssl_module
-          make
-      
+
       - name: Setup goproxy
         run: |
           if [[ -z "$REMOTE_HOST" ]]; then
