@@ -26,14 +26,6 @@
 #include <openssl/engine.h>
 #endif
 #include <openssl/evp.h>
-#if (NGX_QUIC)
-#ifdef OPENSSL_IS_BORINGSSL
-#include <openssl/hkdf.h>
-#include <openssl/chacha.h>
-#else
-#include <openssl/kdf.h>
-#endif
-#endif
 #include <openssl/hmac.h>
 #ifndef OPENSSL_NO_OCSP
 #include <openssl/ocsp.h>
@@ -151,6 +143,7 @@ struct ngx_ssl_connection_s {
     unsigned                    in_ocsp:1;
     unsigned                    early_preread:1;
     unsigned                    write_blocked:1;
+    unsigned                    sni_accepted:1;
 };
 
 
@@ -195,6 +188,13 @@ typedef struct {
     ngx_ssl_ticket_key_t        ticket_keys[3];
     time_t                      fail_time;
 } ngx_ssl_session_cache_t;
+
+
+typedef int (*ngx_ssl_servername_pt)(ngx_ssl_conn_t *, int *, void *);
+
+typedef struct {
+    ngx_ssl_servername_pt       servername;
+} ngx_ssl_client_hello_arg;
 
 
 #define NGX_SSL_SSLv2    0x0002
@@ -286,6 +286,15 @@ ngx_int_t ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_array_t *paths);
 ngx_int_t ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data);
 
+void ngx_ssl_set_client_hello_callback(SSL_CTX *ssl_ctx,
+    ngx_ssl_client_hello_arg *cb);
+#ifdef SSL_CLIENT_HELLO_SUCCESS
+int ngx_ssl_client_hello_callback(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg);
+#elif defined OPENSSL_IS_BORINGSSL
+enum ssl_select_cert_result_t ngx_ssl_select_certificate(
+    const SSL_CLIENT_HELLO *client_hello);
+#endif
+
 ngx_int_t ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c,
     ngx_uint_t flags);
 
@@ -318,6 +327,8 @@ ngx_int_t ngx_ssl_get_ciphers(ngx_connection_t *c, ngx_pool_t *pool,
 ngx_int_t ngx_ssl_get_curve(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_sigalg(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
@@ -355,6 +366,8 @@ ngx_int_t ngx_ssl_get_client_v_end(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_client_v_remain(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
+ngx_int_t ngx_ssl_get_client_sigalg(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
 
 
 ngx_int_t ngx_ssl_handshake(ngx_connection_t *c);
@@ -382,6 +395,8 @@ extern int  ngx_ssl_ticket_keys_index;
 extern int  ngx_ssl_ocsp_index;
 extern int  ngx_ssl_index;
 extern int  ngx_ssl_certificate_name_index;
+extern int  ngx_ssl_certificate_comp_index;
+extern int  ngx_ssl_client_hello_arg_index;
 
 
 extern u_char  ngx_ssl_session_buffer[NGX_SSL_MAX_SESSION_SIZE];
