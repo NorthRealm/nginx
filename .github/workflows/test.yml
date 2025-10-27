@@ -75,9 +75,6 @@ jobs:
           fetch-depth: 0
       
       - name: Setup
-        uses: NorthRealm/fast-apt-mirror.sh@p1
-      
-      - name: Setup
         run: |
           apt-get update
           apt-get -y install openssl libssl-dev
